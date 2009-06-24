@@ -209,6 +209,18 @@ window.Raphael = (function () {
     R.getColor.reset = function () {
         delete this.start;
     };
+    
+    R.easing_formulas = {
+		linear: function( time, beg, diff, dur ) {
+			return beg + diff * time;
+		}
+    };
+    
+    // animation easing formulas
+    R.easing = function(easing, time, beg, diff, dur) {
+        return R.easing_formulas[easing](time, beg, diff, dur);
+	};
+
     // path utilities
     var pathcache = {}, pathcount = [];
     R.parsePathString = function (pathString) {
@@ -2470,12 +2482,16 @@ window.Raphael = (function () {
         }
         return this;
     };
-    Element.prototype.animate = function (params, ms, callback) {
+    Element.prototype.animate = function (params, ms, easing, callback) {
         clearTimeout(this.animation_in_progress);
         var from = {},
             to = {},
             diff = {},
             t = {x: 0, y: 0};
+        if (typeof easing == "function" || !easing) {
+            callback = easing || null;
+            easing = 'linear';
+        }
         for (var attr in params) {
             if (attr in availableAnimAttrs) {
                 from[attr] = this.attr(attr);
@@ -2533,18 +2549,20 @@ window.Raphael = (function () {
         (function tick() {
             var time = new Date - start,
                 set = {},
+                pos,
                 now;
             if (time < ms) {
+                pos = R.easing(easing, time, 0, 1, ms);
                 for (var attr in from) {
                     switch (availableAnimAttrs[attr]) {
                         case "number":
-                            now = +from[attr] + time * diff[attr];
+                            now = +from[attr] + (+diff[attr] * pos * ms);
                             break;
                         case "colour":
                             now = "rgb(" + [
-                                Math.round(from[attr].r + time * diff[attr].r),
-                                Math.round(from[attr].g + time * diff[attr].g),
-                                Math.round(from[attr].b + time * diff[attr].b)
+                                Math.round(+from[attr].r + (+diff[attr].r * pos * ms)),
+                                Math.round(+from[attr].g + (+diff[attr].g * pos * ms)),
+                                Math.round(+from[attr].b + (+diff[attr].b * pos * ms))
                             ].join(",") + ")";
                             break;
                         case "path":
@@ -2552,7 +2570,7 @@ window.Raphael = (function () {
                             for (var i = 0, ii = from[attr].length; i < ii; i++) {
                                 now[i] = [from[attr][i][0]];
                                 for (var j = 1, jj = from[attr][i].length; j < jj; j++) {
-                                    now[i][j] = from[attr][i][j] + time * diff[attr][i][j];
+                                    now[i][j] = +from[attr][i][j] + (+diff[attr][i][j] * pos * ms);
                                 }
                                 now[i] = now[i].join(" ");
                             }
@@ -2572,7 +2590,16 @@ window.Raphael = (function () {
                                     from[attr][1] && (now += "," + from[attr][1] + "," + from[attr][2]);
                                 break;
                                 case "scale":
-                                    now = [+from[attr][0] + time * diff[attr][0], +from[attr][1] + time * diff[attr][1], (2 in params[attr] ? params[attr][2] : ""), (3 in params[attr] ? params[attr][3] : "")].join(" ");
+                                    now = [
+                                        +from[attr][0] + (+diff[attr][0] * pos * ms),
+                                        +from[attr][1] + (+diff[attr][1] * pos * ms),
+                                        (2 in params[attr] 
+                                            ? params[attr][2] 
+                                            : ""),
+                                        (3 in params[attr] 
+                                            ? params[attr][3]
+                                            : "")
+                                    ].join(" ");
                             }
                             break;
                     }
