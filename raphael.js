@@ -18,8 +18,8 @@ window.Raphael = (function () {
             return create.apply(R, arguments);
         },
         paper = {},
-        availableAttrs = {cx: 0, cy: 0, fill: "#fff", "fill-opacity": 1, font: '10px "Arial"', "font-family": '"Arial"', "font-size": "10", "font-style": "normal", "font-weight": 400, gradient: 0, height: 0, href: "http://raphaeljs.com/", opacity: 1, path: "M0,0", r: 0, rotation: 0, rx: 0, ry: 0, scale: "1 1", src: "", stroke: "#000", "stroke-dasharray": "", "stroke-linecap": "butt", "stroke-linejoin": "butt", "stroke-miterlimit": 0, "stroke-opacity": 1, "stroke-width": 1, target: "_blank", "text-anchor": "middle", title: "Raphael", translation: "0 0", width: 0, x: 0, y: 0},
-        availableAnimAttrs = {cx: "number", cy: "number", fill: "colour", "fill-opacity": "number", "font-size": "number", height: "number", opacity: "number", path: "path", r: "number", rotation: "csv", rx: "number", ry: "number", scale: "csv", stroke: "colour", "stroke-opacity": "number", "stroke-width": "number", translation: "csv", width: "number", x: "number", y: "number"},
+        availableAttrs = {cx: 0, cy: 0, fill: "#fff", "fill-opacity": 1, font: '10px "Arial"', "font-family": '"Arial"', "font-size": "10", "font-style": "normal", "font-weight": 400, gradient: 0, height: 0, href: "http://raphaeljs.com/", opacity: 1, path: "M0,0", r: 0, rotation: 0, rx: 0, ry: 0, scale: "1 1", skewX: 0, skewY: 0, matrix: "1 0 0 1 0 0", src: "", stroke: "#000", "stroke-dasharray": "", "stroke-linecap": "butt", "stroke-linejoin": "butt", "stroke-miterlimit": 0, "stroke-opacity": 1, "stroke-width": 1, target: "_blank", "text-anchor": "middle", title: "Raphael", translation: "0 0", width: 0, x: 0, y: 0},
+        availableAnimAttrs = {cx: "number", cy: "number", fill: "colour", "fill-opacity": "number", "font-size": "number", height: "number", opacity: "number", path: "path", r: "number", rotation: "csv", rx: "number", ry: "number", scale: "csv", skewX: "number", skewY: "number", matrix: "csv", stroke: "colour", "stroke-opacity": "number", "stroke-width": "number", translation: "csv", width: "number", x: "number", y: "number"},
         events = ["click", "dblclick", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup"];
     R.version = "0.8";
     R.type = (window.SVGAngle || document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") ? "SVG" : "VML");
@@ -968,6 +968,12 @@ window.Raphael = (function () {
                     case "rotation":
                         o.rotate(value, true);
                         break;
+                    case "skewX":
+                        o.skewY(value);
+                        break;
+                    case "skewY":
+                        o.skewY(value);
+                        break;
                     case "translation":
                         var xy = (value + "").split(separator);
                         o.translate((+xy[0] + 1 || 2) - 1, (+xy[1] + 1 || 2) - 1);
@@ -975,6 +981,10 @@ window.Raphael = (function () {
                     case "scale":
                         var xy = (value + "").split(separator);
                         o.scale(+xy[0] || 1, +xy[1] || +xy[0] || 1, +xy[2] || null, +xy[3] || null);
+                        break;
+                    case "matrix":
+                        var xy = (value + "").split(separator);
+                        o.matrix(+xy[0] || 1, +xy[1] || 0, +xy[2] || 0, +xy[3] || 1, +xy[4] || 0, +xy[5] || 0);
                         break;
                     case "fill":
                         var isURL = value.match(/^url\(([^\)]+)\)$/i);
@@ -1139,7 +1149,7 @@ window.Raphael = (function () {
                 return this._.kx;
             }
             this._.kx = angle;
-            this.transformations[0] = ("skewX(" + this._.kx + ")");
+            this.transformations[3] = ("skewX(" + this._.kx + ")");
             this.node.setAttribute("transform", this.transformations.join(" "));
             return this;  
         };
@@ -1148,7 +1158,16 @@ window.Raphael = (function () {
                 return this._.ky;
             }
             this._.ky = angle;
-            this.transformations[0] = ("skewY(" + this._.ky + ")");
+            this.transformations[4] = ("skewY(" + this._.ky + ")");
+            this.node.setAttribute("transform", this.transformations.join(" "));
+            return this;  
+        };
+        Element.prototype.matrix = function(a, b, c, d, e, f) {
+            if (a == null) {
+                return this._.m;
+            }
+            this._.m = {a: a, b: b, c: c, d: d, e: e, f: f};
+            this.transformations[5] = ("matrix(" + this._.m.a + ", " + this._.m.b + ", " + this._.m.c + ", " + this._.m.d + ", " + this._.m.e + ", " + this._.m.f + ")");
             this.node.setAttribute("transform", this.transformations.join(" "));
             return this;  
         };
@@ -2558,6 +2577,14 @@ window.Raphael = (function () {
                                 params[attr] = values;
                                 from[attr] = (from[attr] + "").split(separator);
                                 diff[attr] = [(values[0] - from[attr][0]) / ms, (values[1] - from[attr][1]) / ms, 0, 0];
+                            break;
+                            case "matrix":
+                                params[attr] = values;
+                                from[attr] = (from[attr] + "").split(separator);
+                                diff[attr] = [];
+                                for (var i = 0; i < 6; i++) {
+                                    diff[attr][i] = (values[i] - from[attr][i]) / ms;
+                                }
                         }
                         to[attr] = values;
                 }
@@ -2620,6 +2647,13 @@ window.Raphael = (function () {
                                             ? params[attr][3]
                                             : "")
                                     ].join(" ");
+                                break;
+                                case "matrix":
+                                    now = [];
+                                    for (var i = 0; i < 6; i++) {
+                                        now[i] = +from[attr][i] + (+diff[attr][i] * pos * ms);
+                                    }
+                                    now = now.join(" ");
                             }
                             break;
                     }
