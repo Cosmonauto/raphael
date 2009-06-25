@@ -1100,7 +1100,9 @@ window.Raphael = (function () {
                 ty: 0,
                 rt: {deg: 0, x: 0, y: 0},
                 sx: 1,
-                sy: 1
+                sy: 1,
+                kx: 0,
+                ky: 0
             };
         };
         Element.prototype.rotate = function (deg, cx, cy) {
@@ -1131,6 +1133,24 @@ window.Raphael = (function () {
             }
             this.node.setAttribute("transform", this.transformations.join(" "));
             return this;
+        };
+        Element.prototype.skewX = function(angle) {
+            if (angle == null) {
+                return this._.kx;
+            }
+            this._.kx = angle;
+            this.transformations[0] = ("skewX(" + this._.kx + ")");
+            this.node.setAttribute("transform", this.transformations.join(" "));
+            return this;  
+        };
+        Element.prototype.skewY = function(angle) {
+            if (angle == null) {
+                return this._.ky;
+            }
+            this._.ky = angle;
+            this.transformations[0] = ("skewY(" + this._.ky + ")");
+            this.node.setAttribute("transform", this.transformations.join(" "));
+            return this;  
         };
         Element.prototype.hide = function () {
             this.node.style.display = "none";
