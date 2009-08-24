@@ -2591,18 +2591,27 @@ window.Raphael = (function () {
 
     Element.prototype.animate = function (params, ms, easing, callback) {
         clearTimeout(this.animation_in_progress);
-        if (typeof easing == "function" || !easing) {
-            callback = easing || null;
-            easing = "linear";
-        }
         var from = {},
             to = {},
             diff = {},
-            t = {x: 0, y: 0};
-        if (typeof easing == "function" || !easing) {
-            callback = easing || null;
-            easing = 'linear';
+            t = {x: 0, y: 0},
+            opts = {};
+            
+        opts = (typeof ms == 'object' 
+            ? ms
+            : opts = {
+                ms: ms,
+                easing: easing,
+                callback: callback
+            }
+        );
+            
+        // Handle old-style animations without easing and with a callback
+        if (typeof opts.easing == "function" || !opts.easing) {
+            opts.callback = opts.easing || null;
+            opts.easing = 'linear';
         }
+        
         for (var attr in params) {
             if (attr in availableAnimAttrs) {
                 from[attr] = this.attr(attr);
@@ -2610,15 +2619,15 @@ window.Raphael = (function () {
                 to[attr] = params[attr];
                 switch (availableAnimAttrs[attr]) {
                     case "number":
-                        diff[attr] = (to[attr] - from[attr]) / ms;
+                        diff[attr] = (to[attr] - from[attr]) / opts.ms;
                         break;
                     case "colour":
                         from[attr] = R.getRGB(from[attr]);
                         var toColour = R.getRGB(to[attr]);
                         diff[attr] = {
-                            r: (toColour.r - from[attr].r) / ms,
-                            g: (toColour.g - from[attr].g) / ms,
-                            b: (toColour.b - from[attr].b) / ms
+                            r: (toColour.r - from[attr].r) / opts.ms,
+                            g: (toColour.g - from[attr].g) / opts.ms,
+                            b: (toColour.b - from[attr].b) / opts.ms
                         };
                         break;
                     case "path":
@@ -2629,7 +2638,7 @@ window.Raphael = (function () {
                         for (var i = 0, ii = from[attr].length; i < ii; i++) {
                             diff[attr][i] = [0];
                             for (var j = 1, jj = from[attr][i].length; j < jj; j++) {
-                                diff[attr][i][j] = (to[attr][i][j] - from[attr][i][j]) / ms;
+                                diff[attr][i][j] = (to[attr][i][j] - from[attr][i][j]) / opts.ms;
                             }
                         }
                         break;
@@ -2639,23 +2648,23 @@ window.Raphael = (function () {
                         switch (attr) {
                             case "translation":
                                 from[attr] = [0, 0];
-                                diff[attr] = [values[0] / ms, values[1] / ms];
+                                diff[attr] = [values[0] / opts.ms, values[1] / opts.ms];
                             break;
                             case "rotation":
                                 from[attr] = (from2[1] == values[1] && from2[2] == values[2]) ? from2 : [0, values[1], values[2]];
-                                diff[attr] = [(values[0] - from[attr][0]) / ms, 0, 0];
+                                diff[attr] = [(values[0] - from[attr][0]) / opts.ms, 0, 0];
                             break;
                             case "scale":
                                 params[attr] = values;
                                 from[attr] = (from[attr] + "").split(separator);
-                                diff[attr] = [(values[0] - from[attr][0]) / ms, (values[1] - from[attr][1]) / ms, 0, 0];
+                                diff[attr] = [(values[0] - from[attr][0]) / opts.ms, (values[1] - from[attr][1]) / opts.ms, 0, 0];
                             break;
                             case "matrix":
                                 params[attr] = values;
                                 from[attr] = (from[attr] + "").split(separator);
                                 diff[attr] = [];
                                 for (var i = 0; i < 6; i++) {
-                                    diff[attr][i] = (values[i] - from[attr][i]) / ms;
+                                    diff[attr][i] = (values[i] - from[attr][i]) / opts.ms;
                                 }
                         }
                         to[attr] = values;
@@ -2670,18 +2679,18 @@ window.Raphael = (function () {
                 set = {},
                 pos,
                 now;
-            if (time < ms) {
-                pos = R.easing(easing, time, 0, 1, ms);
+            if (time < opts.ms) {
+                pos = R.easing(opts.easing, time, 0, 1, opts.ms);
                 for (var attr in from) {
                     switch (availableAnimAttrs[attr]) {
                         case "number":
-                            now = +from[attr] + pos * ms * diff[attr];
+                            now = +from[attr] + (+diff[attr] * pos * opts.ms);
                             break;
                         case "colour":
                             now = "rgb(" + [
-                                Math.round(from[attr].r + pos * ms * diff[attr].r),
-                                Math.round(from[attr].g + pos * ms * diff[attr].g),
-                                Math.round(from[attr].b + pos * ms * diff[attr].b)
+                                Math.round(+from[attr].r + (+diff[attr].r * pos * opts.ms)),
+                                Math.round(+from[attr].g + (+diff[attr].g * pos * opts.ms)),
+                                Math.round(+from[attr].b + (+diff[attr].b * pos * opts.ms))
                             ].join(",") + ")";
                             break;
                         case "path":
@@ -2689,7 +2698,7 @@ window.Raphael = (function () {
                             for (var i = 0, ii = from[attr].length; i < ii; i++) {
                                 now[i] = [from[attr][i][0]];
                                 for (var j = 1, jj = from[attr][i].length; j < jj; j++) {
-                                    now[i][j] = from[attr][i][j] + pos * ms * diff[attr][i][j];
+                                    now[i][j] = +from[attr][i][j] + (+diff[attr][i][j] * pos * opts.ms);
                                 }
                                 now[i] = now[i].join(" ");
                             }
@@ -2705,11 +2714,27 @@ window.Raphael = (function () {
                                     now = [x, y].join(" ");
                                 break;
                                 case "rotation":
-                                    now = +from[attr][0] + pos * ms * diff[attr][0];
+                                    now = +from[attr][0] + time * diff[attr][0];
                                     from[attr][1] && (now += "," + from[attr][1] + "," + from[attr][2]);
                                 break;
                                 case "scale":
-                                    now = [+from[attr][0] + pos * ms * diff[attr][0], +from[attr][1] + pos * ms * diff[attr][1], (2 in params[attr] ? params[attr][2] : ""), (3 in params[attr] ? params[attr][3] : "")].join(" ");
+                                    now = [
+                                        +from[attr][0] + (+diff[attr][0] * pos * opts.ms),
+                                        +from[attr][1] + (+diff[attr][1] * pos * opts.ms),
+                                        (2 in params[attr] 
+                                            ? params[attr][2] 
+                                            : ""),
+                                        (3 in params[attr] 
+                                            ? params[attr][3]
+                                            : "")
+                                    ].join(" ");
+                                break;
+                                case "matrix":
+                                    now = [];
+                                    for (var i = 0; i < 6; i++) {
+                                        now[i] = +from[attr][i] + (+diff[attr][i] * pos * opts.ms);
+                                    }
+                                    now = now.join(" ");
                             }
                             break;
                     }
@@ -2727,7 +2752,7 @@ window.Raphael = (function () {
                 that.attr(params);
                 clearTimeout(that.animation_in_progress);
                 paper.safari();
-                (typeof callback == "function") && callback.call(that);
+                (typeof opts.callback == "function") && opts.callback.call(that);
             }
             prev = time;
         })();
