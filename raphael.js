@@ -1146,6 +1146,7 @@ window.Raphael = (function () {
                 Y = 0;
             this[0] = node;
             this.node = node;
+            this.node.Raphael = this;
             this.paper = svg;
             this.attrs = this.attrs || {};
             this.transformations = []; // rotate, translate, scale
