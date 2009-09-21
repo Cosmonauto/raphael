@@ -227,10 +227,10 @@ window.Raphael = (function () {
         }
         return res;
     }, R);
-    R.getColor = function (value) {
+    R.getColor = function (value, steps) {
         var start = this.getColor.start = this.getColor.start || {h: 0, s: 1, b: value || .75},
             rgb = this.hsb2rgb(start.h, start.s, start.b);
-        start.h += .075;
+        start.h += steps ? 1/steps : .075;
         if (start.h > 1) {
             start.h = 0;
             start.s -= .2;
